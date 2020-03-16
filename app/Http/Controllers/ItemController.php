@@ -1,0 +1,260 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Symfony\Component\HttpFoundation\Response;
+use App\Item;
+use App\User;
+use App\Image;
+use App\SearchId;
+use Illuminate\Http\Request;
+use App\Http\Requests\ItemRequest;
+use App\Http\Resources\ItemResource;
+use App\Http\Resources\ItemCollection;
+use Illuminate\Support\Facades\DB;
+
+
+class ItemController extends Controller
+{
+
+    public function __construct()
+    {
+        $this->middleware('auth:api');               
+    }
+
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index($page = null)
+    {
+        if(auth()->user()->status > 2){
+                        
+            $items = Item::orderBy('id', 'desc')->paginate(2);
+            
+            
+        }else{
+            
+            $items = Item::where('seller_id', auth()->user()->id)->orderBy('id', 'desc')->paginate(10);
+        }
+        
+        return response()->json(['data' => $items]);
+
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create(ItemRequest $request)
+    {        
+        // \Log::info($request->all());
+        $itemName = $request->itemName;
+        $itemPrice = $request->itemPrice;
+        $buyerName = $request->buyerName;
+        $connectionChannel = $request->connectionChannel;
+        $itemDescription = $request->itemDescription;
+        $itemSerialNo = $request->itemSerialNo;
+        $itemModelNo = $request->itemModelNo;
+        $imeiFirst = $request->imeiFirst;
+        $imeiLast = $request->imeiLast;
+        $itemCurrency = $request->currency;
+
+        if($request->theImages) {
+            $paths = $request->theImages['paths'];
+        }
+                
+        $item = Item::create(
+            [
+                'item_name' => $itemName,
+                'amount' => $itemPrice,
+                'buyer_name' => $buyerName,
+                'seller_id' => auth()->user()->id,
+                'seller_email' => auth()->user()->email,
+                'seller_country' => auth()->user()->country,
+                'seller_phone' => auth()->user()->phone,
+                'seller_currency' => $itemCurrency,
+                'seller_flag' => auth()->user()->flag,
+                'connection_channel' => $connectionChannel,
+                'description' => $itemDescription,
+                'cover_photo' => $request->theImages ? $paths[0] : '',
+                'serial_no' => $itemSerialNo,
+                'model_no' => $itemModelNo,
+                'imei_first' => $imeiFirst,
+                'imei_last' => $imeiLast
+            ]            
+        );
+
+        if($request->theImages && count($paths) > 0) {
+            $imageCount = count($paths);
+            for($i=0; $i < $imageCount; $i++) {
+                $photos = Image::create(
+                    [
+                        'item_id' => $item->id,
+                        'image_path' => $paths[$i]
+                    ]
+                );
+            }
+        }
+        $searchId = $item->item_name.'/'.$item->id.'/'.$item->buyer_name;
+        $searchId = str_replace(' ', '', $searchId);
+
+        $searchString = SearchId::create(
+            [
+               'search_string' => $searchId,
+               'item_id' => $item->id,
+               'buyer_name' => $buyerName,
+               'seller_id' => auth()->user()->id,
+               'seller_email' => auth()->user()->email
+            ]
+        );
+
+        return response()->json(['searchId' => $searchId]);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {        
+        $paths = [];
+        
+        try {
+            foreach($request['files'] as $file) {
+                $path = $file->store(
+                    'my-items', 's3'
+                );
+
+                array_push($paths, $path);
+            }
+
+            return response()->json(['paths' => $paths]);
+        } catch (Exception $e) {
+            return response()->json([
+                'error' => 'Photos could not be saved, please try again later'
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  \App\Item  $item
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id)
+    {       
+        // \Log::info($request->all());
+        $item = Item::findOrFail($id);
+        $itemImages = Item::findOrFail($id)->image;
+                
+        return response([
+            'data' => [
+              'item' => new ItemResource($item),
+              'itemImages' => $itemImages
+            ]
+        ], Response::HTTP_OK);
+    }
+
+    public function searchItem(Request $request)
+    {           
+        $searchId = str_replace(' ', '', $request->id);   
+
+        
+        $checkSearch = SearchId::where('search_string', $searchId)->count();
+        if($checkSearch > 0) {
+            $explodeSearchId = explode("/","$searchId");
+
+            $id = $explodeSearchId[1];
+
+            $items = SearchId::findOrFail($id)->item;          
+            
+            return response(['data' => $items]);
+        } 
+
+        return response(['data' => 'The search was not found']);     
+        
+    }
+
+    public function CreatePayIntent(Request $request)
+    {
+        
+        $itemName = $request->itemName;
+        $itemPrice = $request->itemPrice;
+        $buyerName = $request->buyerName;
+        $connectionChannel = $request->connectionChannel;
+        $itemDescription = $request->itemDescription;
+        $itemSerialNo = $request->itemSerialNo;
+        $itemModelNo = $request->itemModelNo;
+        $imeiFirst = $request->imeiFirst;
+        $imeiLast = $request->imeiLast;
+        $itemCurrency = strtolower($request->currency);
+
+        $itemPrice = $itemPrice + ($itemPrice * 0.03);
+        
+
+        \Stripe\Stripe::setApiKey(env('STRIPE_KEY'));
+        // \Log::info($itemPrice);
+        $intent = \Stripe\PaymentIntent::create([
+            'amount' => ($itemPrice * 100),
+            'currency' => $itemCurrency,            
+            'description' => '('.$itemName.')'.' '.$itemDescription            
+        ]);
+
+        return response(['intent' => $intent]);
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  \App\Item  $item
+     * @return \Illuminate\Http\Response
+     */
+    public function edit(Item $item)
+    {
+        //
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Item  $item
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, Item $item)
+    {
+        //
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  \App\Item  $item
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy(Request $request)
+    {       
+        $item = Item::find($request->id);
+
+        $item->delete();
+
+        if(auth()->user()->status > 2){
+                        
+            $items = Item::orderBy('id', 'desc')->paginate(2);
+            
+            
+        }else{
+            
+            $items = Item::where('seller_id', auth()->user()->id)->orderBy('id', 'desc')->paginate(10);
+        }
+        
+        return response()->json(['data' => $items]);
+    }
+}
