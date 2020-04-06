@@ -28,7 +28,9 @@ class SignUpRequest extends FormRequest
             'lastname' => 'required',
             'email' => 'required|email|unique:users',
             'password' => 'required',
-            'country' => 'required'
+            'country' => 'required',
+            'secretquestion' => 'required',
+            'secretanswer' => 'required'
         ];
     }
 }

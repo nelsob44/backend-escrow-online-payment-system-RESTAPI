@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "1718a8ad275756fc816f434d4fe6aaa2",
+    "content-hash": "a150cfb0fded019d4f3f42530db2b626",
     "packages": [
         {
             "name": "aws/aws-sdk-php",
@@ -1558,6 +1558,57 @@
                 "random"
             ],
             "time": "2018-07-02T15:55:56+00:00"
+        },
+        {
+            "name": "paymentrails/php-sdk",
+            "version": "2.0.6",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/PaymentRails/php-sdk.git",
+                "reference": "b68e836c4bf07ac83a37cb60f3310acbb819d27e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/PaymentRails/php-sdk/zipball/b68e836c4bf07ac83a37cb60f3310acbb819d27e",
+                "reference": "b68e836c4bf07ac83a37cb60f3310acbb819d27e",
+                "shasum": ""
+            },
+            "require": {
+                "ext-curl": "*",
+                "ext-json": "*",
+                "ext-mbstring": "*",
+                "ext-openssl": "*",
+                "php": ">=5.4"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "5.7.*",
+                "ramsey/uuid": "*"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-0": {
+                    "PaymentRails": "lib/"
+                },
+                "psr-4": {
+                    "PaymentRails\\": "lib/PaymentRails"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PaymentRails",
+                    "homepage": "https://www.paymentrails.com"
+                }
+            ],
+            "description": "Payment Rails PHP Client Library",
+            "homepage": "https://github.com/PaymentRails/php-sdk",
+            "keywords": [
+                "PaymentRails"
+            ],
+            "time": "2019-11-11T17:03:26+00:00"
         },
         {
             "name": "phpoption/phpoption",

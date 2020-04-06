@@ -20,6 +20,8 @@ Route::group([
     Route::post('signup', 'AuthController@signup');
     Route::post('logout', 'AuthController@logout');
     Route::post('refresh', 'AuthController@refresh');
+    Route::post('verify', 'AuthController@verify');
+    Route::post('verify-answer', 'AuthController@verifyAnswer');
     Route::post('me', 'AuthController@me');
     Route::post('sendpasswordresetlink', 'ResetPasswordController@sendEmail');
     Route::get('admin', 'AdminController@view');
@@ -30,7 +32,7 @@ Route::group([
     Route::post('my-item-detail/{id}', 'ItemController@show');
     Route::post('my-item-search', 'ItemController@searchItem');
     Route::post('payment-intent', 'ItemController@CreatePayIntent');
-    Route::post('editProfile', 'AuthController@profile');
+    Route::post('editProfile', 'AuthController@editProfile');
     Route::post('payments{page?}', 'PaymentController@index');
     Route::post('store-intent', 'PaymentController@storeStripePayment');
     Route::post('delete-item', 'ItemController@destroy');

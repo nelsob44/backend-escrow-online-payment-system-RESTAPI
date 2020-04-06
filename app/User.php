@@ -77,4 +77,9 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasMany('App\SearchId');
     }
+
+    public function verify()
+    {
+        return $this->belongsTo('App\Verify');
+    }
 }
