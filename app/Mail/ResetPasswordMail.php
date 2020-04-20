@@ -30,7 +30,7 @@ class ResetPasswordMail extends Mailable
      */
     public function build()
     {  
-        $url = 'http://localhost:8100/response-reset?token='. $this->token;
+        $url = env('APP_URL').'/response-reset?token='. $this->token;
         
         return $this->markdown('Email.passwordReset')->with(['url' => $url]);
     }

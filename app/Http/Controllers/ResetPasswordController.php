@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use App\Http\Requests\ChangePasswordRequest;
+use App\Jobs\SendPasswordResetJob;
 
 class ResetPasswordController extends Controller
 {
@@ -28,9 +29,27 @@ class ResetPasswordController extends Controller
 
     public function send($email)
     {
+        
         $token = $this->createToken($email);
+        $url = config('app.frontendurl').'/response-reset?token='. $token;
+
+        $params = [
+            'url' => $url,
+            'email' => $email
+        ];
        
-        Mail::to($email)->send(new ResetPasswordMail($token));
+       $this->dispatchResetPassword($params);
+        
+    }
+
+    /**
+     * Dispatch password reset email.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    private function dispatchResetPassword($params)
+    {       
+        SendPasswordResetJob::dispatch($params)->delay(now()->addSeconds(5));
     }
 
     public function createToken($email)
@@ -64,14 +83,14 @@ class ResetPasswordController extends Controller
     public function failedResponse()
     {
         return response()->json([
-            'error' => 'Email was not found'
+            'message' => 'Email was not found'
         ], Response::HTTP_NOT_FOUND);
     }
 
     public function successResponse()
     {
         return response()->json([
-            'data' => 'Reset Email has been sent. Please check your email'
+            'message' => 'Reset Email has been sent. Please check your email'
         ], Response::HTTP_OK);
     }
 

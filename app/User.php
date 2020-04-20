@@ -82,4 +82,9 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->belongsTo('App\Verify');
     }
+
+    public function emailVerify()
+    {
+        return $this->belongsTo('App\EmailVerify');
+    }
 }

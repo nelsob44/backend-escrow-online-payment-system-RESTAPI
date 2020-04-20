@@ -16,9 +16,11 @@ class CreatePaymentsTable extends Migration
         Schema::create('payments', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('intent_id', 100)->nullable();
+            $table->unsignedBigInteger('item_id');
+            $table->string('paypal_order_id', 100)->nullable();
             $table->enum('payment_option', ['stripe', 'paypal']);
             $table->string('currency', 5);
-            $table->float('real_amount', 8, 2);
+            $table->float('amount_paid', 8, 2);
             $table->float('item_price', 8, 2);
             $table->float('amount_received', 8, 2);
             $table->float('commission', 8, 2);            
@@ -28,8 +30,10 @@ class CreatePaymentsTable extends Migration
             $table->char('buyer_name', 100);
             $table->char('buyer_email', 100);
             $table->boolean('payment_completed')->default(false);
+            $table->boolean('transaction_completed')->default(false);
             $table->longText('item_description', 500);
             $table->timestamps();
+            $table->foreign('item_id')->references('id')->on('items')->onDelete('cascade');
             $table->foreign('buyer_id')->references('id')->on('users')->onDelete('cascade');
         });
     }

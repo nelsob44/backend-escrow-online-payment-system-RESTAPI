@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Bridgepay Systems'),
 
     /*
     |--------------------------------------------------------------------------
@@ -52,7 +52,11 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'http://localhost'),
+    'url' => env('APP_URL', 'http://localhost:8000'),
+
+    'frontendurl' => env('APP_URL_FRONTEND', 'http://localhost:8100'),
+
+    'domainurl' => env('DOMAIN_URL'),
 
     'asset_url' => env('ASSET_URL', null),
 
@@ -67,7 +71,7 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('TIME_ZONE', 'UTC'),
 
     /*
     |--------------------------------------------------------------------------
@@ -123,6 +127,30 @@ return [
 
     'cipher' => 'AES-256-CBC',
 
+    'mailgunsecret' => env('MAILGUN_SECRET'),
+
+    'mailguneuurl' => env('MAILGUN_EU_URL'),
+
+    'awsaccesskeyid' => env('AWS_ACCESS_KEY_ID'),
+
+    'awssecretaccesskey' => env('AWS_SECRET_ACCESS_KEY'),
+
+    'awsdefaultregion' => env('AWS_DEFAULT_REGION'),
+
+    'awsbucket' => env('AWS_BUCKET'),
+
+    'awsurl' => env('AWS_URL'),
+
+    'jwtsecret' => env('JWT_SECRET'),
+
+    'paypalclientid' => env('PAYPAL_CLIENT_ID'),
+
+    'paypalclientsecret' => env('PAYPAL_CLIENT_SECRET'),
+
+    'paypalmode' => env('PAYPAL_MODE'),
+
+    'stripekey' => env('STRIPE_KEY'),
+
     /*
     |--------------------------------------------------------------------------
     | Autoloaded Service Providers
@@ -174,7 +202,7 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
-
+        
     ],
 
     /*

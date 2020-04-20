@@ -7,11 +7,13 @@ use App\Item;
 use App\User;
 use App\Image;
 use App\SearchId;
+use App\Jobs\SendSearchIdJob;
 use Illuminate\Http\Request;
 use App\Http\Requests\ItemRequest;
 use App\Http\Resources\ItemResource;
 use App\Http\Resources\ItemCollection;
 use Illuminate\Support\Facades\DB;
+use Exception;
 
 
 class ItemController extends Controller
@@ -51,71 +53,94 @@ class ItemController extends Controller
     public function create(ItemRequest $request)
     {        
         // \Log::info($request->all());
-        $itemName = $request->itemName;
-        $itemPrice = $request->itemPrice;
-        $buyerName = $request->buyerName;
-        $connectionChannel = $request->connectionChannel;
-        $itemDescription = $request->itemDescription;
-        $itemSerialNo = $request->itemSerialNo;
-        $itemModelNo = $request->itemModelNo;
-        $imeiFirst = $request->imeiFirst;
-        $imeiLast = $request->imeiLast;
-        $itemCurrency = $request->currency;
 
-        if($request->theImages) {
-            $paths = $request->theImages['paths'];
-        }
-                
-        $item = Item::create(
-            [
-                'item_name' => $itemName,
-                'amount' => $itemPrice,
-                'buyer_name' => $buyerName,
-                'seller_id' => auth()->user()->id,
-                'seller_email' => auth()->user()->email,
-                'seller_country' => auth()->user()->country,
-                'seller_phone' => auth()->user()->phone,
-                'seller_currency' => $itemCurrency,
-                'seller_flag' => auth()->user()->flag,
-                'connection_channel' => $connectionChannel,
-                'description' => $itemDescription,
-                'cover_photo' => $request->theImages ? $paths[0] : '',
-                'serial_no' => $itemSerialNo,
-                'model_no' => $itemModelNo,
-                'imei_first' => $imeiFirst,
-                'imei_last' => $imeiLast
-            ]            
-        );
+        try {
+            $user = User::where('id', auth()->user()->id)->first();
 
-        if($request->theImages && count($paths) > 0) {
-            $imageCount = count($paths);
-            for($i=0; $i < $imageCount; $i++) {
-                $photos = Image::create(
+            if(!is_null($user->email_verified_at)) {
+
+                $itemName = $request->itemName;
+                $itemPrice = $request->itemPrice;
+                $buyerName = $request->buyerName;
+                $connectionChannel = $request->connectionChannel;
+                $itemDescription = $request->itemDescription;
+                $itemSerialNo = $request->itemSerialNo;
+                $itemModelNo = $request->itemModelNo;
+                $imeiFirst = $request->imeiFirst;
+                $imeiLast = $request->imeiLast;
+                $itemCurrency = $request->currency;
+
+                if($request->theImages) {
+                    $paths = $request->theImages['paths'];
+                }
+                        
+                $item = Item::create(
                     [
-                        'item_id' => $item->id,
-                        'image_path' => $paths[$i]
+                        'item_name' => $itemName,
+                        'amount' => $itemPrice,
+                        'buyer_name' => $buyerName,
+                        'seller_id' => auth()->user()->id,
+                        'seller_email' => auth()->user()->email,
+                        'seller_country' => auth()->user()->country,
+                        'seller_phone' => auth()->user()->phone,
+                        'seller_currency' => $itemCurrency,
+                        'seller_flag' => auth()->user()->flag,
+                        'connection_channel' => $connectionChannel,
+                        'description' => $itemDescription,
+                        'cover_photo' => $request->theImages ? $paths[0] : '',
+                        'serial_no' => $itemSerialNo,
+                        'model_no' => $itemModelNo,
+                        'imei_first' => $imeiFirst,
+                        'imei_last' => $imeiLast
+                    ]            
+                );
+
+                if($request->theImages && count($paths) > 0) {
+                    $imageCount = count($paths);
+                    for($i=0; $i < $imageCount; $i++) {
+                        $photos = Image::create(
+                            [
+                                'item_id' => $item->id,
+                                'image_path' => $paths[$i]
+                            ]
+                        );
+                    }
+                }
+                $searchId = $item->item_name.'/'.$item->id.'/'.$item->buyer_name;
+                $searchId = str_replace(' ', '', $searchId);
+
+                $searchString = SearchId::create(
+                    [
+                    'search_string' => $searchId,
+                    'item_id' => $item->id,
+                    'buyer_name' => $buyerName,
+                    'seller_id' => auth()->user()->id,
+                    'seller_email' => auth()->user()->email
                     ]
                 );
-            }
-        }
-        $searchId = $item->item_name.'/'.$item->id.'/'.$item->buyer_name;
-        $searchId = str_replace(' ', '', $searchId);
 
-        $searchString = SearchId::create(
-            [
-               'search_string' => $searchId,
-               'item_id' => $item->id,
-               'buyer_name' => $buyerName,
-               'seller_id' => auth()->user()->id,
-               'seller_email' => auth()->user()->email
-            ]
-        );
+                $params = [
+                    'searchId' => $searchId,
+                    'email' => auth()->user()->email
+                ];
 
+                $this->dispatchSearchId($params);
+                
+            }else {
+                throw new Exception('User email is not verified. Please verify email');
+            }          
+            
+        } catch (Exception $e) {
+            return response()->json([
+                'errors' => $e->getMessage()
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }  
+        
         return response()->json(['searchId' => $searchId]);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store images.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
@@ -125,21 +150,38 @@ class ItemController extends Controller
         $paths = [];
         
         try {
-            foreach($request['files'] as $file) {
-                $path = $file->store(
-                    'my-items', 's3'
-                );
+            $user = User::where('id', auth()->user()->id)->first();
+            
+            if(!is_null($user->email_verified_at)) {
+                foreach($request['files'] as $file) {
+                    $path = $file->store(
+                        'my-items', 's3'
+                    );
 
-                array_push($paths, $path);
-            }
-
-            return response()->json(['paths' => $paths]);
+                    array_push($paths, $path);
+                }
+            } else {
+                throw new Exception('User email is not verified. Please verify email');
+            }          
+            
         } catch (Exception $e) {
             return response()->json([
-                'error' => 'Photos could not be saved, please try again later'
+                'errors' => $e->getMessage()
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        return response()->json(['paths' => $paths]);
+
+    }
+
+    /**
+     * Dispatch verification email.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    private function dispatchSearchId($params)
+    {       
+        SendSearchIdJob::dispatch($params)->delay(now()->addSeconds(5));
     }
 
     /**
@@ -196,10 +238,10 @@ class ItemController extends Controller
         $imeiLast = $request->imeiLast;
         $itemCurrency = strtolower($request->currency);
 
-        $itemPrice = $itemPrice + ($itemPrice * 0.03);
+        $itemPrice = $itemPrice + ($itemPrice * 0.05);
         
 
-        \Stripe\Stripe::setApiKey(env('STRIPE_KEY'));
+        \Stripe\Stripe::setApiKey(config('app.stripekey'));
         // \Log::info($itemPrice);
         $intent = \Stripe\PaymentIntent::create([
             'amount' => ($itemPrice * 100),
@@ -230,7 +272,7 @@ class ItemController extends Controller
      */
     public function update(Request $request, Item $item)
     {
-        //
+        \Log::info($request->all());
     }
 
     /**

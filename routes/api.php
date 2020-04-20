@@ -12,15 +12,17 @@ use Illuminate\Http\Request;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
+
 Route::group([
     'middleware' => 'api'
 ], function ($router) {
-
+    
     Route::post('login', 'AuthController@login');
     Route::post('signup', 'AuthController@signup');
     Route::post('logout', 'AuthController@logout');
     Route::post('refresh', 'AuthController@refresh');
     Route::post('verify', 'AuthController@verify');
+    Route::post('again', 'AuthController@resendVerify');
     Route::post('verify-answer', 'AuthController@verifyAnswer');
     Route::post('me', 'AuthController@me');
     Route::post('sendpasswordresetlink', 'ResetPasswordController@sendEmail');
@@ -35,6 +37,9 @@ Route::group([
     Route::post('editProfile', 'AuthController@editProfile');
     Route::post('payments{page?}', 'PaymentController@index');
     Route::post('store-intent', 'PaymentController@storeStripePayment');
+    Route::post('create-paypal-payment', 'PaymentController@storePaypalOnApprove');
+    Route::post('create-paypal-transaction', 'PaymentController@completePaypalOrder');
     Route::post('delete-item', 'ItemController@destroy');
-    
+    Route::post('admin/clear-cache', 'AdminController@clearCache');
+
 });
