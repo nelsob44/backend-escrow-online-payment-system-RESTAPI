@@ -21,7 +21,7 @@ class PaymentController extends Controller
         $this->middleware('auth:api');               
     }
     /**
-     * Display a listing of the resource.
+     * Display a listing of payments completed by the buyers, but not released to sellers.
      *
      * @return \Illuminate\Http\Response
      */
@@ -37,27 +37,25 @@ class PaymentController extends Controller
                 ['buyer_email', auth()->user()->email],
                 ['transaction_completed', false]
             ])->paginate(5);
-        }
-        // $request = new OrdersGetRequest('13L59729K7454225H');
-        // $request->headers["prefer"] = "return=representation";
-        // $client = PayPalClient::client();
-        // $response = $client->execute($request);
-        // $answer = json_encode($response->result);
+        }  
         
-        // $answertwo = json_decode($answer, true);
-        
-        // \Log::info($answertwo);
-        $pendingStripePayments = [];
+        $pendingPayments = [];
+       
+        \Stripe\Stripe::setApiKey(config('app.stripekey'));
+        $client = PayPalClient::client();
                 
         foreach($items as $item) {
             try {
                 $event = null;
                                 
-                \Stripe\Stripe::setApiKey(config('app.stripekey'));
+               
                 if($item->payment_option === 'stripe') {
+
+                    //Retrieve confirmed stripe payments
                     $event = \Stripe\PaymentIntent::retrieve($item->intent_id);
+                    
                     if($event->status !== 'succeeded' || (($item->amount_paid * 100) != $event->amount_received)) {
-                                        
+                       
                         $item->payment_status = $event->status;
                         $item->currency = $event->charges->data[0]->currency;                     
                         $item->correct_payment = false;                                                              
@@ -68,7 +66,33 @@ class PaymentController extends Controller
                         $item->correct_payment = true;
                     }                    
                                        
-                }    
+                } elseif($item->payment_option === 'paypal') {
+
+                    //Retrieve confirmed paypal payments
+                    $request = new OrdersGetRequest($item->paypal_order_id);
+                    $request->headers["prefer"] = "return=representation";
+                    $response = $client->execute($request);
+                    $answer = json_encode($response->result);
+                    
+                    $answertwo = json_decode($answer, true);
+                    \Log::info($answertwo['status']);
+                                       
+                    if($answertwo['status'] !== 'COMPLETED' || (($item->amount_paid) != $answertwo['purchase_units'][0]['items'][0]['unit_amount']['value'])) {
+                       
+                        $item->payment_status = 'failed';
+                        $item->currency = $answertwo['purchase_units'][0]['items'][0]['unit_amount']['currency_code'];                     
+                        $item->correct_payment = false;                                                              
+                    } else {
+                        
+                        $item->payment_status = 'succeeded';
+                        $item->currency = $answertwo['purchase_units'][0]['items'][0]['unit_amount']['currency_code'];                     
+
+                        $item->correct_payment = true;
+                    }
+
+                }
+                unset($item->intent_id);
+                unset($item->paypal_order_id);
                 unset($item->transaction_completed);
                 unset($item->updated_at);
                 unset($item->updbuyer_id);
@@ -77,15 +101,16 @@ class PaymentController extends Controller
                 unset($item->amount_received);
                 unset($item->commission);
                 
-                array_push($pendingStripePayments, $item);            
+                array_push($pendingPayments, $item);            
                 
             } catch(\UnexpectedValueException $e) {
                 // Invalid payload
                 http_response_code(400);
                 exit();
             }
-        }        
-        return new PaymentResource($pendingStripePayments);         
+        }    
+           
+        return new PaymentResource($pendingPayments);         
     }
 
     /**
@@ -94,9 +119,7 @@ class PaymentController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function storePaypalOnApprove(Request $request)
-    {
-        \Log::info($request->all());
-        
+    {        
         $paymentOption = 'paypal';
         $itemId = $request->itemId;
         $itemName = $request->itemName;
@@ -139,36 +162,7 @@ class PaymentController extends Controller
 
         return response(['payment' => $payment]);
     }
-
-    /**
-     * Setting up the JSON request body for creating the order with minimum request body. The intent in the
-     * request body should be "AUTHORIZE" for authorize intent flow.
-     *
-     */
-    private static function buildRequestBody()
-    {
-        return array(
-            'intent' => 'CAPTURE',
-            'application_context' =>
-                array(
-                    'return_url' => 'https://example.com/return',
-                    'cancel_url' => 'https://example.com/cancel'
-                ),
-            'purchase_units' =>
-                array(
-                    0 =>
-                        array(
-                            'amount' =>
-                                array(
-                                    'currency_code' => 'USD',
-                                    'value' => '220.00'
-                                )
-                        )
-                )
-        );
-    }
-
-
+    
     /**
      * Store a newly created resource in storage.
      *
@@ -176,14 +170,14 @@ class PaymentController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function storeStripePayment(Request $request)
-    {        
+    {  
         $intentId = $request->intentId;
         $itemId = $request->itemId;
         $paymentOption = 'stripe';
         $realAmount = $request->realAmount;
         $currency = $request->currency;
         $itemPrice = $request->itemPrice;
-        $amountReceived = $realAmount - ($itemPrice * 0.0145);
+        $amountReceived = +$realAmount - (+$itemPrice * 0.0145);
         $commission = $amountReceived - $itemPrice;
         $buyerName = $request->buyer;
         $buyerEmail = $request->buyerEmail;

@@ -72,7 +72,7 @@ class AuthController extends Controller
         $userCheck = User::where('email', $request->email)->first();
 
         try {
-            if(!is_null($userCheck)) {
+            if(is_null($userCheck)) {
                 $user = User::create([
                     'firstname' => $request->firstname,
                     'lastname' => $request->lastname,

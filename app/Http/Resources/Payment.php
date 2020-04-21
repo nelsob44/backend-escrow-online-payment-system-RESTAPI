@@ -20,9 +20,8 @@ class Payment extends JsonResource
     public function with($request)
     {
         return [
-            'version' => '1.1',
-            'api_calls_remaining' => '2',
-            'terms' => url('/tabs/home')
+            'version' => '1.1',            
+            'terms' => config('app.frontendurl').'/tabs/home'
         ];
     }
 }
