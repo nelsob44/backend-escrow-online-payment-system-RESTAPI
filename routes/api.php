@@ -37,9 +37,10 @@ Route::group([
     Route::post('editProfile', 'AuthController@editProfile');
     Route::post('payments{page?}', 'PaymentController@index');
     Route::post('store-intent', 'PaymentController@storeStripePayment');
-    Route::post('create-paypal-payment', 'PaymentController@storePaypalOnApprove');
     Route::post('create-paypal-transaction', 'PaymentController@completePaypalOrder');
+    Route::post('create-paypal-payment', 'PaymentController@storePaypalOnApprove');
+    Route::post('send-sellerpayment', 'PaymentController@sendSellerPayment');
     Route::post('delete-item', 'ItemController@destroy');
     Route::post('admin/clear-cache', 'AdminController@clearCache');
-
+    Route::post('check-emailverification', 'ItemController@checkEmailVerification');
 });

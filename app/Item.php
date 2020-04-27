@@ -22,12 +22,7 @@ class Item extends Model
     {
         return $this->hasOne('App\SearchId');
     }
-
-    public function payment()
-    {
-        return $this->hasOne('App\Payment');
-    }
-
+    
     public function getBuyerNameAttribute($value)
     {
         return ucfirst($value);

@@ -14,6 +14,7 @@ use App\Http\Resources\ItemResource;
 use App\Http\Resources\ItemCollection;
 use Illuminate\Support\Facades\DB;
 use Exception;
+use App\Jobs\SendInvoiceJob;
 
 
 class ItemController extends Controller
@@ -33,18 +34,18 @@ class ItemController extends Controller
     {
         if(auth()->user()->status > 2){
                         
-            $items = Item::orderBy('id', 'desc')->paginate(2);
-            
+            $items = Item::orderBy('id', 'desc')->paginate(2);            
             
         }else{
             
             $items = Item::where('seller_id', auth()->user()->id)->orderBy('id', 'desc')->paginate(10);
         }
-        
+              
         return response()->json(['data' => $items]);
 
     }
 
+    
     /**
      * Show the form for creating a new resource.
      *
@@ -127,7 +128,7 @@ class ItemController extends Controller
                 $this->dispatchSearchId($params);
                 
             }else {
-                throw new Exception('User email is not verified. Please verify email');
+                throw new Exception('User email is not verified. Please verify your email or resend verification link from your profile page');
             }          
             
         } catch (Exception $e) {
@@ -138,6 +139,7 @@ class ItemController extends Controller
         
         return response()->json(['searchId' => $searchId]);
     }
+   
 
     /**
      * Store images.
@@ -161,7 +163,7 @@ class ItemController extends Controller
                     array_push($paths, $path);
                 }
             } else {
-                throw new Exception('User email is not verified. Please verify email');
+                throw new Exception('User email is not verified. Please verify your email or resend verification link from your profile page');
             }          
             
         } catch (Exception $e) {
@@ -173,6 +175,28 @@ class ItemController extends Controller
         return response()->json(['paths' => $paths]);
 
     }
+
+    //Check if email is verified or not
+    public function checkEmailVerification(Request $request)
+    {        
+               
+        try {
+            $user = User::where('id', auth()->user()->id)->first();
+            
+            if(!is_null($user->email_verified_at)) {
+                return response()->json(['message' => 'Email is verified']);
+            } else {
+                throw new Exception('User email is not verified. Please verify your email or resend verification link from your profile page');
+            }          
+            
+        } catch (Exception $e) {
+            return response()->json([
+                'errors' => $e->getMessage()
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }       
+
+    }
+
 
     /**
      * Dispatch verification email.
@@ -206,50 +230,71 @@ class ItemController extends Controller
 
     public function searchItem(Request $request)
     {           
-        $searchId = str_replace(' ', '', $request->id);   
+        $searchId = str_replace(' ', '', $request->id);  
 
-        
-        $checkSearch = SearchId::where('search_string', $searchId)->count();
-        if($checkSearch > 0) {
-            $explodeSearchId = explode("/","$searchId");
-
-            $id = $explodeSearchId[1];
-
-            $items = SearchId::findOrFail($id)->item;          
+        try {
+            $checkSearch = SearchId::where('search_string', $searchId)->count();
             
-            return response(['data' => $items]);
-        } 
+            if($checkSearch > 0) {
+                $explodeSearchId = explode("/","$searchId");
 
-        return response(['data' => 'The search was not found']);     
+                $id = $explodeSearchId[1];
+
+                $items = SearchId::findOrFail($id)->item;          
+                
+                return response(['data' => $items]);
+            } else {
+        
+                throw new Exception('Item was not found. Please check item ID and try again');
+            }          
+            
+        } catch (Exception $e) {
+            return response()->json([
+                'errors' => $e->getMessage()
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }     
         
     }
 
     public function CreatePayIntent(Request $request)
     {
         
-        $itemName = $request->itemName;
-        $itemPrice = $request->itemPrice;
-        $buyerName = $request->buyerName;
-        $connectionChannel = $request->connectionChannel;
-        $itemDescription = $request->itemDescription;
-        $itemSerialNo = $request->itemSerialNo;
-        $itemModelNo = $request->itemModelNo;
-        $imeiFirst = $request->imeiFirst;
-        $imeiLast = $request->imeiLast;
-        $itemCurrency = strtolower($request->currency);
+        try {
+            $user = User::where('id', auth()->user()->id)->first();
+            
+            if(!is_null($user->email_verified_at)) {
+                $itemName = $request->itemName;
+                $itemPrice = $request->itemPrice;
+                $buyerName = $request->buyerName;
+                $connectionChannel = $request->connectionChannel;
+                $itemDescription = $request->itemDescription;
+                $itemSerialNo = $request->itemSerialNo;
+                $itemModelNo = $request->itemModelNo;
+                $imeiFirst = $request->imeiFirst;
+                $imeiLast = $request->imeiLast;
+                $itemCurrency = strtolower($request->currency);
 
-        $itemPrice = $itemPrice + ($itemPrice * 0.05);
+                $itemPrice = $itemPrice + ($itemPrice * 0.05);
+                                
+                \Stripe\Stripe::setApiKey(config('app.stripekey'));
+                // \Log::info(+($itemPrice * 100));
+                $intent = \Stripe\PaymentIntent::create([
+                    'amount' => round($itemPrice * 100),
+                    'currency' => $itemCurrency,            
+                    'description' => '('.$itemName.')'.' '.$itemDescription            
+                ]);
+                \Log::info(config('app.stripekey'));
+                return response(['intent' => $intent]);
+            } else {
+                throw new Exception('User email is not verified. Please verify your email or resend verification link from your profile page');
+            }          
+            
+        } catch (Exception $e) {
+            return response()->json([
+                'errors' => $e->getMessage()
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }       
         
-
-        \Stripe\Stripe::setApiKey(config('app.stripekey'));
-        // \Log::info($itemPrice);
-        $intent = \Stripe\PaymentIntent::create([
-            'amount' => ($itemPrice * 100),
-            'currency' => $itemCurrency,            
-            'description' => '('.$itemName.')'.' '.$itemDescription            
-        ]);
-
-        return response(['intent' => $intent]);
     }
 
     /**
@@ -286,7 +331,7 @@ class ItemController extends Controller
         $item = Item::find($request->id);
 
         $item->delete();
-
+        // Storage::disk('s3')->delete('folder_path/file_name.jpg');
         if(auth()->user()->status > 2){
                         
             $items = Item::orderBy('id', 'desc')->paginate(2);

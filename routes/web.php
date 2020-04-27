@@ -14,3 +14,5 @@ use Illuminate\Http\Request;
 
 
 Route::get('verify-email{userEmail?}{tokenstring?}', 'AuthController@verifyEmail');
+Route::get('pdf/{paymentId?}','PaymentController@export_pdf')->name('pdf');
+Route::get('export-payout/{email?}{password?}','PaymentController@exportData');
