@@ -40,7 +40,10 @@ Route::group([
     Route::post('create-paypal-transaction', 'PaymentController@completePaypalOrder');
     Route::post('create-paypal-payment', 'PaymentController@storePaypalOnApprove');
     Route::post('send-sellerpayment', 'PaymentController@sendSellerPayment');
+    Route::post('complete-paypalorder', 'PaymentController@updatePaypalOrder');
     Route::post('delete-item', 'ItemController@destroy');
     Route::post('admin/clear-cache', 'AdminController@clearCache');
     Route::post('check-emailverification', 'ItemController@checkEmailVerification');
+    Route::post('search-payment', 'PaymentController@searchPayment');
+    Route::post('search-paymentadmin', 'AdminController@searchPaymentAdmin');
 });

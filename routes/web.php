@@ -11,7 +11,9 @@ use Illuminate\Http\Request;
 | contains the "web" middleware group. Now create something great!
 |
 */
-
+Route::get('/', function () {
+    return view('welcome');
+});
 
 Route::get('verify-email{userEmail?}{tokenstring?}', 'AuthController@verifyEmail');
 Route::get('pdf/{paymentId?}','PaymentController@export_pdf')->name('pdf');

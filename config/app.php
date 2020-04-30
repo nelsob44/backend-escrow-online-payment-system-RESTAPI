@@ -56,7 +56,7 @@ return [
 
     'frontendurl' => env('APP_URL_FRONTEND', 'http://localhost:8100'),
 
-    'domainurl' => env('DOMAIN_URL'),
+    'domainurl' => env('DOMAIN_URL', 'mail.myglowstar.com'),
 
     'asset_url' => env('ASSET_URL', null),
 

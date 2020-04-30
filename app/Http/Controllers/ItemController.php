@@ -283,7 +283,7 @@ class ItemController extends Controller
                     'currency' => $itemCurrency,            
                     'description' => '('.$itemName.')'.' '.$itemDescription            
                 ]);
-                \Log::info(config('app.stripekey'));
+                
                 return response(['intent' => $intent]);
             } else {
                 throw new Exception('User email is not verified. Please verify your email or resend verification link from your profile page');

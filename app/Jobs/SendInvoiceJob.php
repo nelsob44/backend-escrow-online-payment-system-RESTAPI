@@ -47,6 +47,7 @@ class SendInvoiceJob implements ShouldQueue
             'sellerEmail' => $this->params['sellerEmail'],
             'buyerEmail' => $this->params['buyerEmail'],
             'currency' => $this->params['currency'],
+            'buyer' => $this->params['buyer'],
             'paymentDate' => $this->params['paymentDate']            
         ])->render();
                 

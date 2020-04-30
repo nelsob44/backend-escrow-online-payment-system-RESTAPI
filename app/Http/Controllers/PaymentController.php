@@ -15,6 +15,7 @@ use PayPalCheckoutSdk\Orders\OrdersCaptureRequest;
 use App\Http\Resources\Payment as PaymentResource;
 use App\Http\Resources\Payments as PaymentResourceCollection;
 use App\Jobs\SendInvoiceJob;
+use App\Jobs\PaymentNotificationJob;
 use Exception;
 use Symfony\Component\HttpFoundation\Response;
 use PDF;
@@ -175,21 +176,6 @@ class PaymentController extends Controller
 
         $updatedPayment = Payment::where('id', $payment->id)->update(['hash_id' => $hashedId]);
        
-        $params = [
-            'itemname'  => $payment->item->item_name, 
-            'paymentId' => $hashedId,
-            'itemPrice' => $payment->item_price,
-            'amountReceived' => $payment->amount_received,
-            'itemDescription' => $payment->item_description,
-            'paymentOption' => $payment->payment_option,
-            'sellerEmail' => $payment->seller_email,
-            'buyerEmail' => $payment->buyer_email,
-            'currency' => $payment->currency,
-            'paymentDate' => $payment->created_at
-        ];
-        
-        $this->dispatchInvoice($params);
-
         return response(['payment' => $payment]);
     }
     
@@ -241,8 +227,8 @@ class PaymentController extends Controller
         $updatedPayment = Payment::where('id', $payment->id)->update(['hash_id' => $hashedId]);
        
         $params = [
-            'itemname'  => $payment->item->item_name, 
             'paymentId' => $hashedId,
+            'itemname'  => $payment->item->item_name,            
             'itemPrice' => $payment->item_price,
             'amountReceived' => $payment->amount_received,
             'itemDescription' => $payment->item_description,
@@ -250,10 +236,26 @@ class PaymentController extends Controller
             'sellerEmail' => $payment->seller_email,
             'buyerEmail' => $payment->buyer_email,
             'currency' => $payment->currency,
+            'buyer' => true,
+            'paymentDate' => $payment->created_at
+        ];
+
+        $paramsSeller = [
+            'paymentId' => $hashedId,
+            'itemname'  => $payment->item->item_name,            
+            'itemPrice' => $payment->item_price,
+            'amountReceived' => $payment->amount_received,
+            'itemDescription' => $payment->item_description,
+            'paymentOption' => $payment->payment_option,
+            'sellerEmail' => $payment->seller_email,
+            'buyerEmail' => $payment->buyer_email,
+            'currency' => $payment->currency,
+            'seller' => true,
             'paymentDate' => $payment->created_at
         ];
         
         $this->dispatchInvoice($params);
+        $this->dispatchPaymentNotification($paramsSeller);
 
         return response(['payment' => $payment]);
     }
@@ -269,6 +271,47 @@ class PaymentController extends Controller
         //
     }
 
+
+    //Update Payment table to show payment from buyer is completed    
+    public function updatePaypalOrder(Request $request)
+    {        
+        $payment = Payment::where('paypal_order_id', $request->id)->first();
+        $updatedPayment = Payment::where('paypal_order_id', $request->id)->update(['payment_completed' => true]);
+    
+        $params = [
+            'itemname'  => $payment->item->item_name, 
+            'paymentId' => $payment->hash_id,
+            'itemPrice' => $payment->item_price,
+            'amountReceived' => $payment->amount_received,
+            'itemDescription' => $payment->item_description,
+            'paymentOption' => $payment->payment_option,
+            'sellerEmail' => $payment->seller_email,
+            'buyerEmail' => $payment->buyer_email,
+            'currency' => $payment->currency,
+            'buyer' => true,
+            'paymentDate' => $payment->created_at
+        ];
+
+        $paramsSeller = [
+            'itemname'  => $payment->item->item_name, 
+            'paymentId' => $payment->hash_id,
+            'itemPrice' => $payment->item_price,
+            'amountReceived' => $payment->amount_received,
+            'itemDescription' => $payment->item_description,
+            'paymentOption' => $payment->payment_option,
+            'sellerEmail' => $payment->seller_email,
+            'buyerEmail' => $payment->buyer_email,
+            'currency' => $payment->currency,
+            'seller' => true,
+            'paymentDate' => $payment->created_at
+        ];
+        
+        $this->dispatchInvoice($params);
+        $this->dispatchPaymentNotification($paramsSeller);
+        return response()->json(['message' => 'Payment has been completed']);
+
+    }
+
     /**
      * Dispatch invoice email.
      *
@@ -276,9 +319,52 @@ class PaymentController extends Controller
      */
     private function dispatchInvoice($params)
     {       
-        SendInvoiceJob::dispatch($params)->delay(now()->addSeconds(20));
+        SendInvoiceJob::dispatch($params)->delay(now()->addSeconds(10));
     }
 
+    /**
+     * Dispatch payment notification email to seller.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    private function dispatchPaymentNotification($params)
+    {       
+        PaymentNotificationJob::dispatch($params)->delay(now()->addSeconds(15));
+    }
+
+    //Search for a payment ID to confirm transaction. You can only confirm transaction if you are the seller
+    public function searchPayment(Request $request)
+    {        
+        $paymentId = $request->paymentId;
+        $paymentId = strip_tags($paymentId);
+        $paymentId = str_replace(' ', '', $paymentId);
+
+        try {
+            
+            $payment = Payment::where([
+                ['hash_id', $paymentId],
+                ['seller_email', auth()->user()->email],
+                ['payment_completed', true]
+            ])->first();
+
+            if(!is_null($payment)){                                           
+    
+                return response()->json(['payment' => $payment]);
+                
+            } else {
+                throw new Exception('This Transaction was not found');
+            }
+                     
+            
+        } catch (Exception $e) {
+            return response()->json([
+                'errors' => $e->getMessage()
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }  
+         
+    }    
+
+    //Register a payment to be sent to seller
     public function sendSellerPayment(Request $request){
         
         try {

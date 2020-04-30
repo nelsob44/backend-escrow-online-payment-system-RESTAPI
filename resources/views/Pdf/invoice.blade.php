@@ -119,7 +119,51 @@
             
             <div class="content">
 
-                <div class="jumbotron jumbotron-fluid">                    
+                <div class="jumbotron jumbotron-fluid">   
+                    @isset($seller)     
+                        <h4>Your payment from {{ $buyerEmail }} has been received. Please log on to our platform to confirm with the Payment ID before you ship your goods or release your services</h4>  
+                        
+                        <table class="table table-bordered">
+                        
+                            <tbody>  
+                                <tr>
+                                    <td><b>Payment Id</b></td>                            
+                                    <td>{{ $paymentId }}</td>                            
+                                </tr>                  
+                                <tr>
+                                    <td><b>Item Name</b></td>                            
+                                    <td>{{ $itemname }}</td>                            
+                                </tr> 
+                                <tr>
+                                    <td><b>Item Price</b></td>                            
+                                    <td>{{ strtoupper($currency) }}{{' '}}{{ $itemPrice }}</td>                            
+                                </tr> 
+                                <tr>
+                                    <td><b>Total amount paid<br> including commission & processing fees</b></td>                            
+                                    <td>{{ strtoupper($currency) }}{{' '}}{{ $amountReceived }}</td>                            
+                                </tr> 
+                                <tr>
+                                    <td><b>Item description</b></td>                            
+                                    <td>{{ $itemDescription }}</td>                            
+                                </tr> 
+                                <tr>
+                                    <td><b>Payment Method</b></td>                            
+                                    <td>{{ $paymentOption }}</td>                            
+                                </tr>
+                                <tr>
+                                    <td><b>Buyer Email</b></td>                            
+                                    <td>{{ $buyerEmail }}</td>                            
+                                </tr> 
+                                <tr>
+                                    <td><b>Payment Date</b></td>                            
+                                    <td>{{ $paymentDate }}</td>                            
+                                </tr>              
+                            </tbody>
+                        </table>
+                    @endisset
+
+                    @empty($seller)
+            
                     <h3>Your Invoice</h3>  
                        <a href="{{ url('pdf?paymentId='.$paymentId) }}"><button class="button">Export to PDF</button></a>
 
@@ -160,6 +204,8 @@
                             </tr>              
                         </tbody>
                     </table>
+
+                    @endempty
                 </div>                
                 
                 <br>

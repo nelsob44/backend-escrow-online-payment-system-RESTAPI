@@ -1,4 +1,5 @@
 <?php
+use Illuminate\Support\Facades\DB;
 
 /**
  * Laravel - A PHP Framework For Web Artisans
@@ -54,7 +55,11 @@ $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 $response = $kernel->handle(
     $request = Illuminate\Http\Request::capture()
 );
-
+if(DB::connection()->getDatabaseName())
+{
+   echo "Connected to database ".DB::connection()->getDatabaseName();
+}
+$response->send();
 $response->send();
 
 $kernel->terminate($request, $response);
