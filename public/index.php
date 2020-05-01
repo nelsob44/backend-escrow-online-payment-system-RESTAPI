@@ -55,11 +55,11 @@ $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 $response = $kernel->handle(
     $request = Illuminate\Http\Request::capture()
 );
-if(DB::connection()->getDatabaseName())
-{
-   echo "Connected to database ";
-}
-$response->send();
+// if(DB::connection()->getDatabaseName())
+// {
+//    echo "Connected to database ";
+// }
+// $response->send();
 $response->send();
 
 $kernel->terminate($request, $response);

@@ -52,9 +52,9 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'http://localhost:8000'),
+    'url' => env('APP_URL'),
 
-    'frontendurl' => env('APP_URL_FRONTEND', 'http://localhost:8100'),
+    'frontendurl' => env('APP_URL_FRONTEND'),
 
     'domainurl' => env('DOMAIN_URL', 'mail.myglowstar.com'),
 
