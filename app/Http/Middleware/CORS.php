@@ -15,7 +15,7 @@ class CORS
      */
     public function handle($request, Closure $next)
     {
-        header('Access-Control-Allow-Origin:http://localhost:8100');
+        // header('Access-Control-Allow-Origin:http');
         header('Access-Control-Allow-Headers: *');        
         return $next($request);
     }
