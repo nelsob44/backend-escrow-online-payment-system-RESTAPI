@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:8100'],
+    'allowed_origins' => ['https://bridgepay.herokuapp.com'],
 
     'allowed_origins_patterns' => [],
 
